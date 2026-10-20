@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Windows Entdecker - Lernspiel für Kids</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts: Fredoka & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Fredoka', 'cursive'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#2563eb',
+                            purple: '#7c3aed',
+                            yellow: '#f59e0b',
+                            green: '#10b981',
+                            red: '#ef4444',
+                            pink: '#ec4899'
+                        }
+                    },
+                    screens: {
+                        'xs': '380px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f3e8ff 50%, #fce7f3 100%);
+            min-height: 100vh;
+        }
+        .font-display {
+            font-family: 'Fredoka', cursive;
+        }
+        
+        /* Mobile-optimized animations */
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite ease-in-out;
+        }
+        
+        @keyframes pulse-scan {
+            0%, 100% { opacity: 0.2; transform: translateY(-100%); }
+            50% { opacity: 0.9; transform: translateY(100%); }
+        }
+        .animate-scanner-line {
+            animation: pulse-scan 1.2s infinite ease-in-out;
+        }
+
+        @keyframes tap-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .selected-tap {
+            animation: tap-pulse 0.8s infinite ease-in-out;
+            box-shadow: 0 0 0 4px #7c3aed !important;
+        }
+
+        /* Checkerboard pattern for transparency demo (.png) */
+        .bg-checkerboard {
+            background-color: #ffffff;
+            background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+            background-size: 14px 14px;
+            background-position: 0 0, 0 7px, 7px -7px, -7px 0px;
+        }
+
+        /* Touch-friendly Minimum Tap Target */
+        .touch-target {
+            min-height: 48px;
+            min-width: 48px;
+        }
+
+        /* Custom Scrollbars for mobile horizontal sliders */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-full pb-24 md:pb-8 overflow-x-hidden">
+
+    <!-- DESKTOP / TABLET HEADER -->
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+            <!-- Logo Section -->
+            <div class="flex items-center space-x-2.5 sm:space-x-3">
+                <div class="bg-gradient-to-tr from-blue-600 via-purple-600 to-pink-500 text-white p-2.5 sm:p-3 rounded-2xl shadow-md animate-bounce-gentle shrink-0">
+                    <i class="fa-solid fa-desktop text-xl sm:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg sm:text-2xl md:text-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
+                        Windows Entdecker
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-500 font-semibold hidden xs:block">Ordner, Laufwerke & Dateien verstehen</p>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation Tabs (Hidden on small mobile screens) -->
+            <nav class="hidden lg:flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 text-sm font-semibold">
+                <button onclick="switchTab('learn')" id="tab-learn" class="tab-btn active px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all bg-white shadow-sm text-blue-600 touch-target">
+                    <i class="fa-solid fa-lightbulb"></i> <span>Haus & Speicher</span>
+                </button>
+                <button onclick="switchTab('explorer')" id="tab-explorer" class="tab-btn px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-600 hover:text-slate-900 touch-target">
+                    <i class="fa-solid fa-house"></i> <span>Daten-Haus</span>
+                </button>
+                <button onclick="switchTab('filelab')" id="tab-filelab" class="tab-btn px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-600 hover:text-slate-900 touch-target">
+                    <i class="fa-solid fa-flask-vial text-purple-600"></i> <span>Datei-Labor</span>
+                </button>
+                <button onclick="switchTab('game')" id="tab-game" class="tab-btn px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-600 hover:text-slate-900 touch-target">
+                    <i class="fa-solid fa-gamepad text-green-600"></i> <span>Spiele</span>
+                </button>
+                <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all text-slate-600 hover:text-slate-900 touch-target">
+                    <i class="fa-solid fa-award text-amber-500"></i> <span>Quiz</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 flex-grow w-full">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: ERKLÄRUNG (METAPHER HAUS & LAUFWERKE) -->
+        <!-- ========================================== -->
+        <section id="section-learn" class="tab-section space-y-4 sm:space-y-8">
+            <!-- Intro Banner -->
+            <div class="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl">
+                    <span class="bg-white/20 text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Lernen mit Spaß</span>
+                    <h2 class="font-display text-2xl sm:text-4xl md:text-5xl font-bold mt-2 mb-2 sm:mb-4">Dein Computer ist wie ein Haus! 🏠</h2>
+                    <p class="text-blue-100 text-xs sm:text-base leading-relaxed">
+                        Ein Computer speichert viele Dinge. Damit kein Chaos entsteht, ordnet Windows alles in verschiedene Räume (Laufwerke) und Schränke (Ordner) ein!
+                    </p>
+                </div>
+                <div class="absolute -right-4 -bottom-6 opacity-15 sm:opacity-30 text-7xl sm:text-9xl pointer-events-none">
+                    <i class="fa-solid fa-laptop"></i>
+                </div>
+            </div>
+
+            <!-- Metapher Grid (Mobile: 1 col, Tablet: 2 col, Desktop: 3 col) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                <!-- C:\ Laufwerk -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-red-200 shadow-sm sm:shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-red-100 text-red-600 font-display font-bold px-3 py-1 rounded-xl text-base sm:text-lg">C:\</span>
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center text-xl sm:text-2xl">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold mb-1.5 text-slate-800">Das System-Zimmer</h3>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Hier wohnt **Windows** und alle wichtigen Werkzeuge.
+                        </p>
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-2.5 sm:p-3 text-[11px] sm:text-xs text-red-700 flex items-start gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-sm mt-0.5 shrink-0"></i>
+                            <span><strong>Achtung:</strong> Hier nichts löschen! Das ist der Motor des Computers.</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] sm:text-xs font-semibold text-slate-400">
+                        Beispiel: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono">C:\Windows</code>
+                    </div>
+                </div>
+
+                <!-- D:\ Laufwerk -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-green-200 shadow-sm sm:shadow-md flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-green-100 text-green-600 font-display font-bold px-3 py-1 rounded-xl text-base sm:text-lg">D:\</span>
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center text-xl sm:text-2xl">
+                                <i class="fa-solid fa-gamepad"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold mb-1.5 text-slate-800">Spiel- & Daten-Zimmer</h3>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Dein persönlicher Raum für **Spiele, Musik, Fotos & Hausaufgaben**.
+                        </p>
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-2.5 sm:p-3 text-[11px] sm:text-xs text-green-700 flex items-start gap-2">
+                            <i class="fa-solid fa-circle-check text-sm mt-0.5 shrink-0"></i>
+                            <span><strong>Sicher:</strong> Hier darfst du eigene Ordner anlegen!</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] sm:text-xs font-semibold text-slate-400">
+                        Beispiel: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono">D:\Spiele\Minecraft</code>
+                    </div>
+                </div>
+
+                <!-- E:\ USB-Stick -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-amber-200 shadow-sm sm:shadow-md flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-amber-100 text-amber-700 font-display font-bold px-3 py-1 rounded-xl text-base sm:text-lg">E:\ oder F:\</span>
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl sm:text-2xl">
+                                <i class="fa-solid fa-hard-drive"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold mb-1.5 text-slate-800">Der Rucksack (USB)</h3>
+                        <p class="text-slate-600 text-xs sm:text-sm leading-relaxed mb-3">
+                            Ein **USB-Stick**! Einfach einstecken, mitnehmen und Daten überall dabei haben.
+                        </p>
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 sm:p-3 text-[11px] sm:text-xs text-amber-800 flex items-start gap-2">
+                            <i class="fa-solid fa-lightbulb text-sm mt-0.5 shrink-0"></i>
+                            <span><strong>Mobil:</strong> Ziehst du den Stick ab, verschwindet das Laufwerk.</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] sm:text-xs font-semibold text-slate-400">
+                        Beispiel: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono">E:\Fotos_Urlaub</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ordner & Pfad Erklärung -->
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
+                <h3 class="font-display text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-slate-800 text-center">Ordner & Pfade verständlich</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
+                    <div class="text-center p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-3xl sm:text-4xl text-amber-500 mb-2"><i class="fa-solid fa-folder"></i></div>
+                        <h4 class="font-bold text-sm sm:text-lg text-slate-800 mb-1">1. Ordner</h4>
+                        <p class="text-slate-600 text-xs">Wie eine Mappe oder Kiste. Bringt Ordnung in Daten!</p>
+                    </div>
+
+                    <div class="text-center p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-3xl sm:text-4xl text-blue-500 mb-2"><i class="fa-solid fa-folder-tree"></i></div>
+                        <h4 class="font-bold text-sm sm:text-lg text-slate-800 mb-1">2. Unterordner</h4>
+                        <p class="text-slate-600 text-xs">Ein Ordner im Ordner. Wie kleine Schachteln in einer großen Kiste.</p>
+                    </div>
+
+                    <div class="text-center p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="text-3xl sm:text-4xl text-purple-500 mb-2"><i class="fa-solid fa-route"></i></div>
+                        <h4 class="font-bold text-sm sm:text-lg text-slate-800 mb-1">3. Pfad (Adresse)</h4>
+                        <p class="text-slate-600 text-xs">Die genaue Adresse einer Datei: <br><code class="font-mono text-purple-700 bg-purple-50 px-1 rounded break-all text-[11px]">C:\Bilder\Urlaub.jpg</code></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 2: INTERAKTIVES DATEN-HAUS EXPLORER    -->
+        <!-- ========================================== -->
+        <section id="section-explorer" class="tab-section hidden space-y-4 sm:space-y-6">
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                    <div>
+                        <h2 class="font-display text-xl sm:text-3xl font-bold text-slate-800">Das Daten-Haus erkunden</h2>
+                        <p class="text-slate-500 text-xs sm:text-sm">Tippe auf ein Laufwerk oder einen Ordner!</p>
+                    </div>
+                    
+                    <!-- Breadcrumb Path Navigator (Mobile horizontal scrollable) -->
+                    <div class="bg-slate-100 px-3 py-2 rounded-xl text-xs sm:text-sm font-mono flex items-center gap-2 border border-slate-200 overflow-x-auto max-w-full no-scrollbar">
+                        <i class="fa-solid fa-compass text-blue-600 shrink-0"></i>
+                        <span id="breadcrumb-path" class="text-slate-700 font-bold whitespace-nowrap">Dieser PC</span>
+                    </div>
+                </div>
+
+                <!-- Explorer Interface -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+                    <!-- Mobile Drive Selector (Horizontal Scroll on Phone, Sidebar on Desktop) -->
+                    <div class="md:col-span-1 space-y-2 bg-slate-50 p-2.5 sm:p-4 rounded-2xl border border-slate-200">
+                        <h4 class="font-display font-bold text-slate-500 text-[10px] sm:text-xs uppercase tracking-wider mb-1 sm:mb-2 px-1">Haupt-Laufwerke</h4>
+                        
+                        <div class="flex md:flex-col gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                            <button onclick="navExplorer('PC')" id="nav-btn-pc" class="nav-item shrink-0 md:w-full text-left p-2.5 sm:p-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-between gap-2 transition bg-blue-600 text-white shadow-sm touch-target">
+                                <span class="flex items-center gap-2 whitespace-nowrap"><i class="fa-solid fa-desktop"></i> Dieser PC</span>
+                                <i class="fa-solid fa-chevron-right text-xs hidden md:inline"></i>
+                            </button>
+
+                            <button onclick="navExplorer('C')" id="nav-btn-c" class="nav-item shrink-0 md:w-full text-left p-2.5 sm:p-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-between gap-2 transition bg-white md:bg-transparent hover:bg-slate-200 text-slate-700 border md:border-0 border-slate-200 touch-target">
+                                <span class="flex items-center gap-2 text-red-600 whitespace-nowrap"><i class="fa-solid fa-hard-drive"></i> System (C:)</span>
+                                <i class="fa-solid fa-chevron-right text-xs hidden md:inline text-slate-400"></i>
+                            </button>
+
+                            <button onclick="navExplorer('D')" id="nav-btn-d" class="nav-item shrink-0 md:w-full text-left p-2.5 sm:p-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-between gap-2 transition bg-white md:bg-transparent hover:bg-slate-200 text-slate-700 border md:border-0 border-slate-200 touch-target">
+                                <span class="flex items-center gap-2 text-green-600 whitespace-nowrap"><i class="fa-solid fa-hard-drive"></i> Daten (D:)</span>
+                                <i class="fa-solid fa-chevron-right text-xs hidden md:inline text-slate-400"></i>
+                            </button>
+
+                            <button onclick="navExplorer('E')" id="nav-btn-e" class="nav-item shrink-0 md:w-full text-left p-2.5 sm:p-3 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-between gap-2 transition bg-white md:bg-transparent hover:bg-slate-200 text-slate-700 border md:border-0 border-slate-200 touch-target">
+                                <span class="flex items-center gap-2 text-amber-600 whitespace-nowrap"><i class="fa-solid fa-usb-drive"></i> USB (E:)</span>
+                                <i class="fa-solid fa-chevron-right text-xs hidden md:inline text-slate-400"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Explorer Window -->
+                    <div class="md:col-span-3 bg-slate-50/50 rounded-2xl border border-slate-200 p-3.5 sm:p-6 min-h-[300px] flex flex-col justify-between">
+                        <div>
+                            <!-- Action Bar -->
+                            <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+                                <div id="explorer-title" class="font-display font-bold text-base sm:text-xl text-slate-800">
+                                    Dieser PC
+                                </div>
+                                <button onclick="navExplorerBack()" id="back-btn" class="hidden text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold items-center gap-1.5 touch-target">
+                                    <i class="fa-solid fa-arrow-left"></i> Zurück
+                                </button>
+                            </div>
+
+                            <!-- Content Grid (Responsive 1-col on tiny screens, 2-col on mobile, 3-col desktop) -->
+                            <div id="explorer-content" class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
+                                <!-- Dynamic Items inserted via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Explanatory Banner -->
+                        <div id="explorer-info" class="mt-4 p-3 sm:p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs leading-relaxed flex items-center gap-2.5">
+                            <i class="fa-solid fa-circle-info text-xl text-blue-600 shrink-0"></i>
+                            <div><strong>Tipp:</strong> Tippe auf Ordner, um tiefer hineinzuschauen!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 3: DATEI-LABOR (DATEITYPEN & ENDUNGEN) -->
+        <!-- ========================================== -->
+        <section id="section-filelab" class="tab-section hidden space-y-4 sm:space-y-8">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl">
+                    <span class="bg-white/20 text-white text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">🧪 Datei-Labor</span>
+                    <h2 class="font-display text-2xl sm:text-4xl font-bold mt-2 mb-2">Der Datei-Ausweis 🪪</h2>
+                    <p class="text-purple-100 text-xs sm:text-base leading-relaxed">
+                        Eine Dateiendung (wie <b>.png</b> oder <b>.mp3</b>) steht ganz hinten am Dateinamen. Sie verrät dem Computer sofort, welches Programm die Datei öffnen soll!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Categories Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                <!-- 1. BILDER -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-amber-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2 sm:mb-3">
+                            <span class="bg-amber-100 text-amber-700 font-display font-bold px-2.5 py-0.5 sm:py-1 rounded-xl text-xs sm:text-sm">Bilder & Fotos</span>
+                            <i class="fa-solid fa-image text-2xl sm:text-3xl text-amber-500"></i>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold text-slate-800 mb-1">.jpg & .png</h3>
+                        <p class="text-xs text-slate-600 mb-3">Fotos und Zeichnungen am Computer.</p>
+                        
+                        <div class="bg-slate-50 p-2.5 sm:p-3 rounded-xl space-y-2 text-xs">
+                            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+                                <div>
+                                    <span class="font-bold text-amber-600">.jpg</span>
+                                    <p class="text-[10px] text-slate-500">Fotos mit Hintergrund</p>
+                                </div>
+                                <div class="w-8 h-8 bg-amber-400 rounded-md flex items-center justify-center text-white text-[10px] font-bold">Foto</div>
+                            </div>
+                            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+                                <div>
+                                    <span class="font-bold text-pink-600">.png</span>
+                                    <p class="text-[10px] text-slate-500">Transparenter Hintergrund</p>
+                                </div>
+                                <div class="w-8 h-8 bg-checkerboard rounded-md flex items-center justify-center text-purple-600 text-sm font-bold">⭐</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. DOKUMENTE -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-blue-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2 sm:mb-3">
+                            <span class="bg-blue-100 text-blue-700 font-display font-bold px-2.5 py-0.5 sm:py-1 rounded-xl text-xs sm:text-sm">Dokumente</span>
+                            <i class="fa-solid fa-file-contract text-2xl sm:text-3xl text-blue-500"></i>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold text-slate-800 mb-1">.docx & .pdf</h3>
+                        <p class="text-xs text-slate-600 mb-3">Schultexte und Geschichten.</p>
+                        
+                        <div class="bg-slate-50 p-2.5 sm:p-3 rounded-xl space-y-2 text-xs">
+                            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+                                <div>
+                                    <span class="font-bold text-blue-600">.docx</span>
+                                    <p class="text-[10px] text-slate-500">Wie ein Heft (bearbeitbar)</p>
+                                </div>
+                                <i class="fa-solid fa-pen-to-square text-blue-500 text-base"></i>
+                            </div>
+                            <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+                                <div>
+                                    <span class="font-bold text-red-600">.pdf</span>
+                                    <p class="text-[10px] text-slate-500">Wie ein Buch (fest gedruckt)</p>
+                                </div>
+                                <i class="fa-solid fa-lock text-red-500 text-base"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. WEBSEITEN -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-emerald-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2 sm:mb-3">
+                            <span class="bg-emerald-100 text-emerald-700 font-display font-bold px-2.5 py-0.5 sm:py-1 rounded-xl text-xs sm:text-sm">Webseiten</span>
+                            <i class="fa-solid fa-code text-2xl sm:text-3xl text-emerald-500"></i>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold text-slate-800 mb-1">.html</h3>
+                        <p class="text-xs text-slate-600 mb-3">Die Bauanleitung für Internetseiten!</p>
+                        
+                        <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-800">
+                            <div class="font-bold mb-1"><i class="fa-solid fa-laptop-code"></i> Für den Browser</div>
+                            <p class="text-[11px]">Verrät dem Browser, wo Texte, Knöpfe und Bilder stehen sollen.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. AUDIO & VIDEO -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-purple-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2 sm:mb-3">
+                            <span class="bg-purple-100 text-purple-700 font-display font-bold px-2.5 py-0.5 sm:py-1 rounded-xl text-xs sm:text-sm">Musik & Filme</span>
+                            <i class="fa-solid fa-photo-film text-2xl sm:text-3xl text-purple-500"></i>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold text-slate-800 mb-1">.mp3 & .mp4</h3>
+                        <p class="text-xs text-slate-600 mb-3">Lieder, Hörspiele und Videos.</p>
+                        
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex items-center gap-2 bg-purple-50 p-2 rounded-lg text-purple-800">
+                                <i class="fa-solid fa-music text-purple-600"></i>
+                                <span><b>.mp3</b> = Nur Ton & Musik</span>
+                            </div>
+                            <div class="flex items-center gap-2 bg-indigo-50 p-2 rounded-lg text-indigo-800">
+                                <i class="fa-solid fa-video text-indigo-600"></i>
+                                <span><b>.mp4</b> = Video mit Bild & Ton</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. PROGRAMME -->
+                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-red-200 shadow-sm sm:col-span-2 lg:col-span-2 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2 sm:mb-3">
+                            <span class="bg-red-100 text-red-700 font-display font-bold px-2.5 py-0.5 sm:py-1 rounded-xl text-xs sm:text-sm">Spiele & Programme</span>
+                            <i class="fa-solid fa-rocket text-2xl sm:text-3xl text-red-500"></i>
+                        </div>
+                        <h3 class="font-display text-lg sm:text-xl font-bold text-slate-800 mb-1">.exe (Executable)</h3>
+                        <p class="text-xs text-slate-600 mb-3">
+                            Der Startknopf für Spiele! Wenn du auf eine .exe tippst, startet das Programm.
+                        </p>
+                        <div class="bg-red-50 border border-red-200 p-2.5 rounded-xl text-xs text-red-800 flex items-center gap-2.5">
+                            <i class="fa-solid fa-triangle-exclamation text-xl text-red-500 shrink-0"></i>
+                            <span><b>Sicherheits-Regel:</b> Starte nie fremde .exe Dateien aus dem Internet!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERAKTIVES RÖNTGENGERÄT / SCANNER -->
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-md border-2 border-purple-200">
+                <div class="text-center max-w-xl mx-auto mb-4 sm:mb-6">
+                    <span class="bg-purple-100 text-purple-700 font-bold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">Scanner-Animation</span>
+                    <h3 class="font-display text-xl sm:text-3xl font-bold text-slate-800 mt-1">Das Datei-Röntgengerät 🔬</h3>
+                    <p class="text-slate-500 text-xs">Tippe auf eine Datei zum Durchleuchten!</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 items-center">
+                    <!-- File Select Buttons (Touch Targets) -->
+                    <div class="space-y-2">
+                        <button onclick="scanFile('photo')" class="w-full text-left p-3 rounded-xl border-2 border-slate-200 hover:border-purple-400 bg-slate-50 hover:bg-purple-50 transition flex items-center justify-between touch-target">
+                            <span class="flex items-center gap-2.5 font-semibold text-slate-800 text-xs sm:text-sm">
+                                <i class="fa-solid fa-image text-amber-500 text-lg"></i> Strand_Urlaub.png
+                            </span>
+                            <span class="text-[11px] bg-amber-100 text-amber-700 px-2 py-1 rounded-md font-bold">Scannen</span>
+                        </button>
+
+                        <button onclick="scanFile('doc')" class="w-full text-left p-3 rounded-xl border-2 border-slate-200 hover:border-purple-400 bg-slate-50 hover:bg-purple-50 transition flex items-center justify-between touch-target">
+                            <span class="flex items-center gap-2.5 font-semibold text-slate-800 text-xs sm:text-sm">
+                                <i class="fa-solid fa-file-word text-blue-500 text-lg"></i> Aufsatz_Geschichte.docx
+                            </span>
+                            <span class="text-[11px] bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold">Scannen</span>
+                        </button>
+
+                        <button onclick="scanFile('html')" class="w-full text-left p-3 rounded-xl border-2 border-slate-200 hover:border-purple-400 bg-slate-50 hover:bg-purple-50 transition flex items-center justify-between touch-target">
+                            <span class="flex items-center gap-2.5 font-semibold text-slate-800 text-xs sm:text-sm">
+                                <i class="fa-solid fa-code text-emerald-500 text-lg"></i> Webseite.html
+                            </span>
+                            <span class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold">Scannen</span>
+                        </button>
+
+                        <button onclick="scanFile('song')" class="w-full text-left p-3 rounded-xl border-2 border-slate-200 hover:border-purple-400 bg-slate-50 hover:bg-purple-50 transition flex items-center justify-between touch-target">
+                            <span class="flex items-center gap-2.5 font-semibold text-slate-800 text-xs sm:text-sm">
+                                <i class="fa-solid fa-music text-purple-500 text-lg"></i> Lieblingshit.mp3
+                            </span>
+                            <span class="text-[11px] bg-purple-100 text-purple-700 px-2 py-1 rounded-md font-bold">Scannen</span>
+                        </button>
+                    </div>
+
+                    <!-- Scanner Screen Display -->
+                    <div class="relative bg-slate-900 text-white rounded-2xl p-5 min-h-[220px] flex flex-col justify-center items-center text-center overflow-hidden border-4 border-slate-800 shadow-xl">
+                        <!-- Laser Scanner Line -->
+                        <div id="scanner-line" class="hidden absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent animate-scanner-line pointer-events-none"></div>
+
+                        <div id="scanner-placeholder" class="space-y-2">
+                            <i class="fa-solid fa-microscope text-4xl text-slate-600 animate-pulse"></i>
+                            <p class="text-slate-400 text-xs">Tippe links eine Datei an!</p>
+                        </div>
+
+                        <div id="scanner-result" class="hidden space-y-2 w-full">
+                            <div id="scan-icon" class="text-4xl"></div>
+                            <h4 id="scan-title" class="font-display font-bold text-lg text-cyan-300"></h4>
+                            <div id="scan-app" class="inline-block bg-white/10 text-cyan-200 text-[11px] px-2.5 py-0.5 rounded-full font-mono"></div>
+                            <p id="scan-desc" class="text-slate-300 text-xs leading-relaxed max-w-xs mx-auto"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 4: SPIELE (HANDY-OPTIMIERT: TAP & DRAG) -->
+        <!-- ========================================== -->
+        <section id="section-game" class="tab-section hidden space-y-6 sm:space-y-10">
+            
+            <!-- GAME 1: AUSWEIS-ZUORDNUNG (TOUCH READY) -->
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
+                <div class="text-center max-w-xl mx-auto mb-4 sm:mb-6">
+                    <span class="bg-pink-100 text-pink-700 font-bold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">Mini-Spiel 1</span>
+                    <h2 class="font-display text-xl sm:text-3xl font-bold text-slate-800 mt-1">Ausweis-Detektiv 🪪</h2>
+                    <p class="text-slate-600 text-xs sm:text-sm mt-1">
+                        Welche Dateiendung passt zu dieser Datei? Tippe auf die richtige Antwort!
+                    </p>
+                </div>
+
+                <div id="badge-game-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center max-w-3xl mx-auto">
+                    <!-- Target Card -->
+                    <div id="badge-target-card" class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-center space-y-2 transition-all">
+                        <div id="badge-file-icon" class="text-5xl text-slate-400">
+                            <i class="fa-solid fa-file"></i>
+                        </div>
+                        <div>
+                            <h3 id="badge-file-name" class="font-display font-bold text-xl text-slate-800">Dateiname</h3>
+                            <p id="badge-file-hint" class="text-xs text-slate-500 mt-0.5">Hinweis geladen...</p>
+                        </div>
+                    </div>
+
+                    <!-- Ausweis Options (48px Touch Targets) -->
+                    <div id="badge-options" class="grid grid-cols-2 gap-2.5">
+                        <!-- Options via JS -->
+                    </div>
+                </div>
+
+                <!-- Success Box -->
+                <div id="badge-game-success" class="hidden text-center py-4 space-y-3">
+                    <div class="text-5xl text-pink-500"><i class="fa-solid fa-circle-check"></i></div>
+                    <h3 class="font-display font-bold text-2xl text-slate-800">Super gemacht! 🥳</h3>
+                    <p class="text-slate-600 text-xs sm:text-sm">Du hast allen Dateien den richtigen Ausweis gegeben!</p>
+                    <button onclick="restartBadgeGame()" class="bg-pink-600 text-white font-bold px-5 py-2.5 rounded-xl shadow hover:bg-pink-700 transition touch-target">
+                        Nochmal spielen
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- GAME 2: ORDNER-SORTIERUNG (DUAL MODE: TAP-TO-PLACE + DRAG-AND-DROP) -->
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200">
+                <div class="text-center max-w-xl mx-auto mb-4 sm:mb-6">
+                    <span class="bg-purple-100 text-purple-700 font-bold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">Mini-Spiel 2</span>
+                    <h2 class="font-display text-xl sm:text-3xl font-bold text-slate-800 mt-1">Ordner-Sortierer 🧹</h2>
+                    <p class="text-slate-600 text-xs sm:text-sm mt-1">
+                        <b>Auf dem Handy:</b> Tippe zuerst eine Datei an und danach den passenden Ordner!
+                    </p>
+                </div>
+
+                <!-- Drop Target Folders -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                    <!-- Folder: System (C:) -->
+                    <div id="drop-zone-system" onclick="handleFolderTap('system')" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'system')" class="drop-zone border-2 border-dashed border-red-300 bg-red-50/50 rounded-2xl p-3 sm:p-4 text-center transition-all min-h-[120px] sm:min-h-[150px] flex flex-col items-center justify-center cursor-pointer touch-target">
+                        <div class="text-3xl text-red-500 mb-1"><i class="fa-solid fa-gear"></i></div>
+                        <h4 class="font-display font-bold text-sm text-slate-800">C:\Windows</h4>
+                        <p class="text-[10px] text-slate-500">System- & Windows-Dateien</p>
+                        <div class="drop-contents flex flex-wrap justify-center gap-1.5 mt-2"></div>
+                    </div>
+
+                    <!-- Folder: Eigene Dateien (D:) -->
+                    <div id="drop-zone-docs" onclick="handleFolderTap('docs')" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'docs')" class="drop-zone border-2 border-dashed border-blue-300 bg-blue-50/50 rounded-2xl p-3 sm:p-4 text-center transition-all min-h-[120px] sm:min-h-[150px] flex flex-col items-center justify-center cursor-pointer touch-target">
+                        <div class="text-3xl text-blue-500 mb-1"><i class="fa-solid fa-folder-open"></i></div>
+                        <h4 class="font-display font-bold text-sm text-slate-800">D:\Eigene_Dateien</h4>
+                        <p class="text-[10px] text-slate-500">Texte, Hausaufgaben & Bilder</p>
+                        <div class="drop-contents flex flex-wrap justify-center gap-1.5 mt-2"></div>
+                    </div>
+
+                    <!-- Folder: Spiele (D:) -->
+                    <div id="drop-zone-games" onclick="handleFolderTap('games')" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'games')" class="drop-zone border-2 border-dashed border-green-300 bg-green-50/50 rounded-2xl p-3 sm:p-4 text-center transition-all min-h-[120px] sm:min-h-[150px] flex flex-col items-center justify-center cursor-pointer touch-target">
+                        <div class="text-3xl text-green-500 mb-1"><i class="fa-solid fa-gamepad"></i></div>
+                        <h4 class="font-display font-bold text-sm text-slate-800">D:\Spiele</h4>
+                        <p class="text-[10px] text-slate-500">Spiele & Anwendungen</p>
+                        <div class="drop-contents flex flex-wrap justify-center gap-1.5 mt-2"></div>
+                    </div>
+                </div>
+
+                <!-- Unsorted Files Pool -->
+                <div class="bg-slate-100 rounded-2xl p-3 sm:p-5 border border-slate-200">
+                    <h4 class="font-display font-bold text-xs sm:text-sm text-slate-700 text-center mb-3">Tippe oder ziehe eine Datei:</h4>
+                    
+                    <div id="file-pool" class="flex flex-wrap justify-center gap-2 sm:gap-3 min-h-[70px]">
+                        <!-- File 1 -->
+                        <div id="file-1" onclick="handleFileTap('file-1')" draggable="true" ondragstart="handleDragStart(event)" data-category="games" class="draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer">
+                            <span class="text-green-500 text-xl"><i class="fa-solid fa-cube"></i></span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Minecraft.exe</div>
+                                <div class="text-[9px] text-slate-400">Spiel-Anwendung</div>
+                            </div>
+                        </div>
+
+                        <!-- File 2 -->
+                        <div id="file-2" onclick="handleFileTap('file-2')" draggable="true" ondragstart="handleDragStart(event)" data-category="docs" class="draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer">
+                            <span class="text-blue-500 text-xl"><i class="fa-solid fa-file-lines"></i></span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Mathe.docx</div>
+                                <div class="text-[9px] text-slate-400">Text-Dokument</div>
+                            </div>
+                        </div>
+
+                        <!-- File 3 -->
+                        <div id="file-3" onclick="handleFileTap('file-3')" draggable="true" ondragstart="handleDragStart(event)" data-category="system" class="draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer">
+                            <span class="text-red-500 text-xl"><i class="fa-solid fa-file-code"></i></span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">System32.dll</div>
+                                <div class="text-[9px] text-slate-400">Windows-Systemdatei</div>
+                            </div>
+                        </div>
+
+                        <!-- File 4 -->
+                        <div id="file-4" onclick="handleFileTap('file-4')" draggable="true" ondragstart="handleDragStart(event)" data-category="docs" class="draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer">
+                            <span class="text-amber-500 text-xl"><i class="fa-solid fa-image"></i></span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Strand.jpg</div>
+                                <div class="text-[9px] text-slate-400">Bild-Datei</div>
+                            </div>
+                        </div>
+
+                        <!-- File 5 -->
+                        <div id="file-5" onclick="handleFileTap('file-5')" draggable="true" ondragstart="handleDragStart(event)" data-category="games" class="draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer">
+                            <span class="text-purple-500 text-xl"><i class="fa-solid fa-car"></i></span>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Rennspiel.exe</div>
+                                <div class="text-[9px] text-slate-400">Spiel-Datei</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sort Success Box -->
+                <div id="game-success" class="hidden bg-emerald-500 text-white rounded-2xl p-4 text-center animate-bounce-gentle mt-4">
+                    <h3 class="font-display font-bold text-xl sm:text-2xl">Ausgezeichnet! 🎉</h3>
+                    <p class="text-emerald-100 text-xs sm:text-sm">Du hast alle Dateien richtig einsortiert!</p>
+                    <button onclick="resetGame()" class="mt-3 bg-white text-emerald-700 font-bold px-4 py-2 rounded-xl text-xs shadow hover:bg-emerald-50 touch-target">
+                        Nochmal sortieren
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 5: QUIZ                                -->
+        <!-- ========================================== -->
+        <section id="section-quiz" class="tab-section hidden space-y-4 sm:space-y-6">
+            <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm border border-slate-200 max-w-2xl mx-auto">
+                <div class="text-center mb-4 sm:mb-6">
+                    <span class="bg-yellow-100 text-yellow-800 font-bold text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider">Wissens-Check</span>
+                    <h2 class="font-display text-xl sm:text-3xl font-bold text-slate-800 mt-1">Das Quiz 🧠</h2>
+                </div>
+
+                <!-- Quiz Progress Bar -->
+                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-6">
+                    <div id="quiz-progress" class="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full w-1/5 transition-all duration-300"></div>
+                </div>
+
+                <!-- Quiz Question Box -->
+                <div id="quiz-card" class="space-y-4">
+                    <h3 id="quiz-question" class="font-display text-base sm:text-xl font-bold text-slate-800 text-center">
+                        Frage wird geladen...
+                    </h3>
+
+                    <div id="quiz-options" class="grid grid-cols-1 gap-2.5">
+                        <!-- Dynamic Buttons -->
+                    </div>
+                </div>
+
+                <!-- Quiz Result Display -->
+                <div id="quiz-result" class="hidden text-center space-y-3 py-4">
+                    <div class="text-5xl text-yellow-400"><i class="fa-solid fa-trophy"></i></div>
+                    <h3 class="font-display text-2xl font-bold text-slate-800">Quiz beendet!</h3>
+                    <p id="quiz-score-text" class="text-slate-600 text-sm">Ergebnis wird geladen...</p>
+                    <button onclick="restartQuiz()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition touch-target">
+                        Quiz neustarten
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+    <!-- ========================================== -->
+    <!-- STICKY MOBILE NAVIGATION BOTTOM BAR        -->
+    <!-- ========================================== -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 z-50 px-2 py-1.5 shadow-lg">
+        <div class="grid grid-cols-5 gap-1 max-w-md mx-auto text-center">
+            <button onclick="switchTab('learn')" id="mobile-tab-learn" class="mobile-nav-btn active flex flex-col items-center justify-center py-1 rounded-xl text-blue-600 font-bold transition">
+                <i class="fa-solid fa-lightbulb text-lg mb-0.5"></i>
+                <span class="text-[10px]">Speicher</span>
+            </button>
+
+            <button onclick="switchTab('explorer')" id="mobile-tab-explorer" class="mobile-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-500 font-bold transition">
+                <i class="fa-solid fa-house text-lg mb-0.5"></i>
+                <span class="text-[10px]">Haus</span>
+            </button>
+
+            <button onclick="switchTab('filelab')" id="mobile-tab-filelab" class="mobile-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-500 font-bold transition">
+                <i class="fa-solid fa-flask-vial text-lg mb-0.5"></i>
+                <span class="text-[10px]">Labor</span>
+            </button>
+
+            <button onclick="switchTab('game')" id="mobile-tab-game" class="mobile-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-500 font-bold transition">
+                <i class="fa-solid fa-gamepad text-lg mb-0.5"></i>
+                <span class="text-[10px]">Spiele</span>
+            </button>
+
+            <button onclick="switchTab('quiz')" id="mobile-tab-quiz" class="mobile-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-500 font-bold transition">
+                <i class="fa-solid fa-award text-lg mb-0.5"></i>
+                <span class="text-[10px]">Quiz</span>
+            </button>
+        </div>
+    </nav>
+
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // TRIGGER CONFETTI CELEBRATION
+        function launchConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+            }
+        }
+
+        // TAB SWITCHING (Desktop & Mobile Nav Synchronized)
+        function switchTab(tabId) {
+            // Hide all sections
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+            
+            // Reset Desktop buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+                btn.classList.add('text-slate-600');
+            });
+
+            // Reset Mobile bottom bar buttons
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600');
+                btn.classList.add('text-slate-500');
+            });
+
+            // Show selected section
+            document.getElementById('section-' + tabId).classList.remove('hidden');
+
+            // Highlight Desktop
+            const activeDesktop = document.getElementById('tab-' + tabId);
+            if (activeDesktop) {
+                activeDesktop.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+                activeDesktop.classList.remove('text-slate-600');
+            }
+
+            // Highlight Mobile
+            const activeMobile = document.getElementById('mobile-tab-' + tabId);
+            if (activeMobile) {
+                activeMobile.classList.add('text-blue-600');
+                activeMobile.classList.remove('text-slate-500');
+            }
+
+            // Scroll to top smooth
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+
+        // ==========================================
+        // EXPLORER DATA & LOGIC
+        // ==========================================
+        const explorerData = {
+            'PC': {
+                title: 'Dieser PC',
+                path: 'Dieser PC',
+                info: 'Hier siehst du alle Räume (Laufwerke), die an deinen PC angeschlossen sind.',
+                items: [
+                    { name: 'Lokaler Datenträger (C:)', type: 'drive', color: 'text-red-500', target: 'C', desc: 'System-Zimmer' },
+                    { name: 'Daten & Spiele (D:)', type: 'drive', color: 'text-green-500', target: 'D', desc: 'Daten-Zimmer' },
+                    { name: 'USB-Stick (E:)', type: 'drive', color: 'text-amber-500', target: 'E', desc: 'Rucksack-Speicher' }
+                ]
+            },
+            'C': {
+                title: 'Lokaler Datenträger (C:)',
+                path: 'C:\\',
+                info: 'Hier wohnen Windows und wichtigste Systemdateien. Vorsichtig sein!',
+                items: [
+                    { name: 'Windows', type: 'folder', color: 'text-amber-500', target: 'C_Windows', desc: 'System-Ordner' },
+                    { name: 'Programme', type: 'folder', color: 'text-amber-500', target: 'C_Programs', desc: 'Anwendungen' },
+                    { name: 'Benutzer', type: 'folder', color: 'text-amber-500', target: 'C_Users', desc: 'Benutzerkonten' }
+                ]
+            },
+            'C_Windows': {
+                title: 'C:\\Windows',
+                path: 'C:\\Windows',
+                info: 'Der Motor von Windows. Bitte hier nichts verändern!',
+                items: [
+                    { name: 'System32.dll', type: 'file', icon: 'fa-file-code text-red-500', desc: 'Systemdatei' },
+                    { name: 'explorer.exe', type: 'file', icon: 'fa-window-maximize text-blue-500', desc: 'Oberfläche' }
+                ]
+            },
+            'C_Programs': {
+                title: 'C:\\Programme',
+                path: 'C:\\Programme',
+                info: 'Hier liegen nützliche Werkzeuge und Browser.',
+                items: [
+                    { name: 'Paint.exe', type: 'file', icon: 'fa-paint-brush text-pink-500', desc: 'Malprogramm' },
+                    { name: 'Browser.exe', type: 'file', icon: 'fa-globe text-blue-500', desc: 'Internet' }
+                ]
+            },
+            'C_Users': {
+                title: 'C:\\Benutzer',
+                path: 'C:\\Benutzer',
+                info: 'Dein persönlicher Nutzerbereich auf diesem PC.',
+                items: [
+                    { name: 'Max (Du)', type: 'folder', color: 'text-amber-500', target: 'PC', desc: 'Deine Daten' }
+                ]
+            },
+            'D': {
+                title: 'Daten & Spiele (D:)',
+                path: 'D:\\',
+                info: 'Dein freier Speicherplatz für Spiele und Schularbeiten!',
+                items: [
+                    { name: 'Spiele', type: 'folder', color: 'text-green-500', target: 'D_Games', desc: 'Deine Spiele' },
+                    { name: 'Bilder & Fotos', type: 'folder', color: 'text-blue-500', target: 'D_Pictures', desc: 'Fotos & Kunst' }
+                ]
+            },
+            'D_Games': {
+                title: 'D:\\Spiele',
+                path: 'D:\\Spiele',
+                info: 'Alle installierten Spielwelten.',
+                items: [
+                    { name: 'Minecraft.exe', type: 'file', icon: 'fa-cube text-emerald-500', desc: 'Block-Spiel' },
+                    { name: 'Rennspiel.exe', type: 'file', icon: 'fa-gamepad text-purple-500', desc: 'Rennspiel' }
+                ]
+            },
+            'D_Pictures': {
+                title: 'D:\\Bilder & Fotos',
+                path: 'D:\\Bilder & Fotos',
+                info: 'Gespeicherte Urlaubserinnerungen.',
+                items: [
+                    { name: 'Strand.jpg', type: 'file', icon: 'fa-image text-amber-500', desc: 'Foto' },
+                    { name: 'Logo.png', type: 'file', icon: 'fa-image text-pink-500', desc: 'Grafik' }
+                ]
+            },
+            'E': {
+                title: 'USB-Stick (E:)',
+                path: 'E:\\',
+                info: 'Ein mobiler USB-Stick zum Mitnehmen.',
+                items: [
+                    { name: 'Vortrag.pdf', type: 'file', icon: 'fa-file-pdf text-red-500', desc: 'Schul-Referat' },
+                    { name: 'Lied.mp3', type: 'file', icon: 'fa-music text-purple-500', desc: 'Musikstück' }
+                ]
+            }
+        };
+
+        let currentExplorerNode = 'PC';
+        let navigationHistory = [];
+
+        function navExplorer(nodeKey) {
+            if (currentExplorerNode !== nodeKey) {
+                navigationHistory.push(currentExplorerNode);
+            }
+            currentExplorerNode = nodeKey;
+            renderExplorer();
+        }
+
+        function navExplorerBack() {
+            if (navigationHistory.length > 0) {
+                currentExplorerNode = navigationHistory.pop();
+                renderExplorer();
+            }
+        }
+
+        function renderExplorer() {
+            const data = explorerData[currentExplorerNode] || explorerData['PC'];
+            const contentDiv = document.getElementById('explorer-content');
+            const pathSpan = document.getElementById('breadcrumb-path');
+            const titleDiv = document.getElementById('explorer-title');
+            const infoDiv = document.getElementById('explorer-info');
+            const backBtn = document.getElementById('back-btn');
+
+            pathSpan.innerText = data.path;
+            titleDiv.innerText = data.title;
+            infoDiv.querySelector('div').innerHTML = `<strong>Tipp:</strong> ${data.info}`;
+
+            if (navigationHistory.length > 0) {
+                backBtn.classList.remove('hidden');
+                backBtn.classList.add('flex');
+            } else {
+                backBtn.classList.add('hidden');
+                backBtn.classList.remove('flex');
+            }
+
+            contentDiv.innerHTML = '';
+            data.items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm hover:shadow-md cursor-pointer flex flex-col items-center text-center justify-between touch-target transition active:scale-95";
+
+                if (item.type === 'drive' || item.type === 'folder') {
+                    card.onclick = () => navExplorer(item.target);
+                    card.innerHTML = `
+                        <div class="text-3xl sm:text-4xl ${item.color || 'text-amber-500'} mb-1 sm:mb-2">
+                            <i class="fa-solid ${item.type === 'drive' ? 'fa-hard-drive' : 'fa-folder'}"></i>
+                        </div>
+                        <div class="font-bold text-xs sm:text-sm text-slate-800 leading-tight mb-0.5">${item.name}</div>
+                        <div class="text-[10px] text-slate-400 font-medium">${item.desc}</div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="text-3xl sm:text-4xl mb-1 sm:mb-2">
+                            <i class="fa-solid ${item.icon}"></i>
+                        </div>
+                        <div class="font-bold text-xs sm:text-sm text-slate-800 leading-tight mb-0.5">${item.name}</div>
+                        <div class="text-[10px] text-slate-400 font-medium">${item.desc}</div>
+                    `;
+                }
+                contentDiv.appendChild(card);
+            });
+        }
+
+
+        // ==========================================
+        // SCANNER LOGIC
+        // ==========================================
+        const scanData = {
+            photo: {
+                title: "Strand_Urlaub.png",
+                icon: "<i class='fa-solid fa-image text-amber-400'></i>",
+                app: "Öffnet in: Fotos / Galerie",
+                desc: "Ein hochauflösendes Bild! Die Endung .png verrät dem PC, dass das Foto scharf dargestellt werden soll."
+            },
+            doc: {
+                title: "Aufsatz_Geschichte.docx",
+                icon: "<i class='fa-solid fa-file-word text-blue-400'></i>",
+                app: "Öffnet in: Word / Textverarbeitung",
+                desc: "Ein bearbeitbares Text-Dokument mit Absätzen und Buchstaben für die Schule."
+            },
+            html: {
+                title: "Webseite.html",
+                icon: "<i class='fa-solid fa-code text-emerald-400'></i>",
+                app: "Öffnet in: Web-Browser (Chrome / Edge)",
+                desc: "Eine Bauanleitung für das Internet! Die Endung .html verwandelt Code in schöne bunten Webseiten."
+            },
+            song: {
+                title: "Lieblingshit.mp3",
+                icon: "<i class='fa-solid fa-music text-purple-400'></i>",
+                app: "Öffnet in: Musik-Player",
+                desc: "Eine Ton-Datei! Die Endung .mp3 sagt dem Lautsprecher, dass Musik abgespielt wird."
+            }
+        };
+
+        function scanFile(type) {
+            const scannerLine = document.getElementById('scanner-line');
+            const placeholder = document.getElementById('scanner-placeholder');
+            const result = document.getElementById('scanner-result');
+
+            placeholder.classList.add('hidden');
+            result.classList.add('hidden');
+            scannerLine.classList.remove('hidden');
+
+            setTimeout(() => {
+                scannerLine.classList.add('hidden');
+                const data = scanData[type];
+
+                document.getElementById('scan-icon').innerHTML = data.icon;
+                document.getElementById('scan-title').innerText = data.title;
+                document.getElementById('scan-app').innerText = data.app;
+                document.getElementById('scan-desc').innerText = data.desc;
+
+                result.classList.remove('hidden');
+            }, 1000);
+        }
+
+
+        // ==========================================
+        // GAME 1: AUSWEIS-ZUORDNUNG
+        // ==========================================
+        const badgeQuestions = [
+            { name: "Sommer_Foto", hint: "Ein Urlaubsfoto vom Strand.", correct: ".jpg", icon: "fa-solid fa-image text-amber-500", options: [".jpg", ".mp3", ".exe", ".docx"] },
+            { name: "Lieblings_Lied", hint: "Ein Musikstück zum Mitsingen.", correct: ".mp3", icon: "fa-solid fa-music text-purple-500", options: [".pdf", ".mp3", ".html", ".png"] },
+            { name: "Minecraft_Start", hint: "Der Startknopf für das Spiel.", correct: ".exe", icon: "fa-solid fa-cube text-emerald-500", options: [".docx", ".exe", ".jpg", ".mp4"] },
+            { name: "Schul_Buch", hint: "Ein fertiges Buch als PDF.", correct: ".pdf", icon: "fa-solid fa-file-pdf text-red-500", options: [".png", ".exe", ".pdf", ".mp3"] },
+            { name: "Internet_Seite", hint: "Die Bauanleitung für Webseiten.", correct: ".html", icon: "fa-solid fa-code text-blue-500", options: [".html", ".jpg", ".docx", ".exe"] }
+        ];
+
+        let currentBadgeIndex = 0;
+
+        function renderBadgeGame() {
+            if (currentBadgeIndex >= badgeQuestions.length) {
+                document.getElementById('badge-game-container').classList.add('hidden');
+                document.getElementById('badge-game-success').classList.remove('hidden');
+                launchConfetti();
+                return;
+            }
+
+            const q = badgeQuestions[currentBadgeIndex];
+            document.getElementById('badge-file-icon').className = `text-5xl ${q.icon}`;
+            document.getElementById('badge-file-name').innerText = `${q.name}???`;
+            document.getElementById('badge-file-hint').innerText = `💡 ${q.hint}`;
+
+            const optionsDiv = document.getElementById('badge-options');
+            optionsDiv.innerHTML = '';
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "p-3 bg-white border-2 border-slate-200 hover:border-pink-400 rounded-xl font-display font-bold text-lg text-slate-800 shadow-sm transition active:scale-95 touch-target";
+                btn.innerText = opt;
+                btn.onclick = () => checkBadge(opt, q.correct, btn);
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        function checkBadge(chosen, correct, btn) {
+            if (chosen === correct) {
+                btn.className = "p-3 bg-emerald-500 text-white border-2 border-emerald-600 rounded-xl font-display font-bold text-lg shadow-sm touch-target";
+                setTimeout(() => {
+                    currentBadgeIndex++;
+                    renderBadgeGame();
+                }, 600);
+            } else {
+                btn.className = "p-3 bg-red-500 text-white border-2 border-red-600 rounded-xl font-display font-bold text-lg shadow-sm touch-target";
+                setTimeout(() => {
+                    btn.className = "p-3 bg-white border-2 border-slate-200 rounded-xl font-display font-bold text-lg text-slate-800 shadow-sm touch-target";
+                }, 500);
+            }
+        }
+
+        function restartBadgeGame() {
+            currentBadgeIndex = 0;
+            document.getElementById('badge-game-container').classList.remove('hidden');
+            document.getElementById('badge-game-success').classList.add('hidden');
+            renderBadgeGame();
+        }
+
+
+        // ==========================================
+        // GAME 2: SORTIEREN (TAP-TO-PLACE & DRAG-DROP)
+        // ==========================================
+        let sortedCount = 0;
+        let selectedFileId = null;
+
+        // TAP-TO-SELECT FOR MOBILE
+        function handleFileTap(fileId) {
+            const fileElem = document.getElementById(fileId);
+            if (!fileElem || !fileElem.getAttribute('draggable')) return;
+
+            // Deselect previous
+            if (selectedFileId) {
+                const prev = document.getElementById(selectedFileId);
+                if (prev) prev.classList.remove('selected-tap');
+            }
+
+            if (selectedFileId === fileId) {
+                selectedFileId = null; // Toggle off
+            } else {
+                selectedFileId = fileId;
+                fileElem.classList.add('selected-tap');
+            }
+        }
+
+        function handleFolderTap(targetCategory) {
+            if (!selectedFileId) return;
+
+            const fileElem = document.getElementById(selectedFileId);
+            if (!fileElem) return;
+
+            const fileCategory = fileElem.getAttribute('data-category');
+
+            if (fileCategory === targetCategory) {
+                placeFileInZone(fileElem, targetCategory);
+            } else {
+                // Shake / Error feedback
+                const zone = document.getElementById(`drop-zone-${targetCategory}`);
+                zone.classList.add('border-red-500', 'bg-red-100');
+                setTimeout(() => zone.classList.remove('border-red-500', 'bg-red-100'), 500);
+            }
+
+            selectedFileId = null;
+        }
+
+        function placeFileInZone(fileElem, targetCategory) {
+            fileElem.classList.remove('selected-tap', 'draggable', 'hover:border-purple-400');
+            fileElem.classList.add('bg-emerald-50', 'border-emerald-300');
+            fileElem.removeAttribute('draggable');
+            fileElem.onclick = null; // Disable tap
+
+            const dropZone = document.getElementById(`drop-zone-${targetCategory}`).querySelector('.drop-contents');
+            dropZone.appendChild(fileElem);
+
+            sortedCount++;
+            if (sortedCount === 5) {
+                document.getElementById('game-success').classList.remove('hidden');
+                launchConfetti();
+            }
+        }
+
+        // DESKTOP DRAG AND DROP
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.id);
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e, targetCategory) {
+            e.preventDefault();
+            const fileId = e.dataTransfer.getData('text/plain');
+            const fileElem = document.getElementById(fileId);
+            if (!fileElem) return;
+
+            const fileCategory = fileElem.getAttribute('data-category');
+            if (fileCategory === targetCategory) {
+                placeFileInZone(fileElem, targetCategory);
+            }
+        }
+
+        function resetGame() {
+            sortedCount = 0;
+            selectedFileId = null;
+            document.getElementById('game-success').classList.add('hidden');
+            const pool = document.getElementById('file-pool');
+
+            for (let i = 1; i <= 5; i++) {
+                const file = document.getElementById(`file-${i}`);
+                file.setAttribute('draggable', 'true');
+                file.className = "draggable bg-white border-2 border-slate-200 p-2.5 rounded-xl shadow-sm flex items-center gap-2.5 transition touch-target cursor-pointer";
+                file.onclick = () => handleFileTap(`file-${i}`);
+                pool.appendChild(file);
+            }
+        }
+
+
+        // ==========================================
+        // QUIZ LOGIC
+        // ==========================================
+        const quizQuestions = [
+            {
+                q: "Wo sollte das Betriebssystem Windows am besten liegen?",
+                options: [
+                    { text: "Auf dem Laufwerk C:\\ (System-Zimmer)", correct: true },
+                    { text: "Auf einem USB-Stick im Ranzen", correct: false },
+                    { text: "Im Papierkorb", correct: false }
+                ]
+            },
+            {
+                q: "Was verrät die Dateiendung (.png, .mp3, .exe) dem Computer?",
+                options: [
+                    { text: "Welche Farbe der Bildschirm hat", correct: false },
+                    { text: "Sie ist der Ausweis der Datei und zeigt das passende Programm", correct: true },
+                    { text: "Wie viel der PC gekostet hat", correct: false }
+                ]
+            },
+            {
+                q: "Welche Dateiendung gehört zu Musik und Hörspielen?",
+                options: [
+                    { text: ".docx", correct: false },
+                    { text: ".mp3", correct: true },
+                    { text: ".exe", correct: false }
+                ]
+            },
+            {
+                q: "Was passiert, wenn du auf eine .exe Datei tippst?",
+                options: [
+                    { text: "Ein Programm oder Spiel startet", correct: true },
+                    { text: "Der PC schaltet sich aus", correct: false },
+                    { text: "Ein Foto wird gedruckt", correct: false }
+                ]
+            },
+            {
+                q: "Welche Endung baut Webseiten im Internet?",
+                options: [
+                    { text: ".html", correct: true },
+                    { text: ".jpg", correct: false },
+                    { text: ".pdf", correct: false }
+                ]
+            }
+        ];
+
+        let currentQuizIndex = 0;
+        let score = 0;
+
+        function renderQuiz() {
+            if (currentQuizIndex >= quizQuestions.length) {
+                document.getElementById('quiz-card').classList.add('hidden');
+                document.getElementById('quiz-result').classList.remove('hidden');
+                document.getElementById('quiz-score-text').innerText = `Du hast ${score} von ${quizQuestions.length} Fragen richtig beantwortet!`;
+                launchConfetti();
+                return;
+            }
+
+            const currentQ = quizQuestions[currentQuizIndex];
+            document.getElementById('quiz-question').innerText = `${currentQuizIndex + 1}. ${currentQ.q}`;
+
+            const progress = ((currentQuizIndex + 1) / quizQuestions.length) * 100;
+            document.getElementById('quiz-progress').style.width = `${progress}%`;
+
+            const optionsDiv = document.getElementById('quiz-options');
+            optionsDiv.innerHTML = '';
+
+            currentQ.options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3.5 sm:p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition font-semibold text-xs sm:text-sm text-slate-700 flex items-center justify-between touch-target active:scale-95";
+                btn.innerHTML = `<span>${opt.text}</span> <i class="fa-regular fa-circle text-slate-300"></i>`;
+                btn.onclick = () => checkAnswer(opt.correct, btn);
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(isCorrect, buttonElem) {
+            if (isCorrect) {
+                score++;
+                buttonElem.className = "w-full text-left p-3.5 sm:p-4 rounded-xl border-2 border-emerald-500 bg-emerald-100 font-semibold text-xs sm:text-sm text-emerald-900 flex items-center justify-between touch-target";
+                buttonElem.querySelector('i').className = "fa-solid fa-circle-check text-emerald-600";
+            } else {
+                buttonElem.className = "w-full text-left p-3.5 sm:p-4 rounded-xl border-2 border-red-500 bg-red-100 font-semibold text-xs sm:text-sm text-red-900 flex items-center justify-between touch-target";
+                buttonElem.querySelector('i').className = "fa-solid fa-circle-xmark text-red-600";
+            }
+
+            const buttons = document.getElementById('quiz-options').querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            setTimeout(() => {
+                currentQuizIndex++;
+                renderQuiz();
+            }, 1000);
+        }
+
+        function restartQuiz() {
+            currentQuizIndex = 0;
+            score = 0;
+            document.getElementById('quiz-card').classList.remove('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+            renderQuiz();
+        }
+
+        // INITIALIZATION
+        window.onload = function() {
+            renderExplorer();
+            renderBadgeGame();
+            renderQuiz();
+        };
+    </script>
+</body>
+</html>
